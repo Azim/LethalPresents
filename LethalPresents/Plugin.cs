@@ -60,8 +60,10 @@ namespace LethalPresents
             {
                 return;
             }
+            int fortune = UnityEngine.Random.Range(0, 99);
+            mls.LogInfo("Player's fortune:"+fortune);
 
-            //if (UnityEngine.Random.Range(0, 99) >= 2) return;
+            if (fortune >= 4) return;
             if (__instance.isInFactory) //inside
             {
                 if(currentLevel.Enemies.Count < 1)
