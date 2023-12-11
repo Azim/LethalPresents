@@ -1,2 +1,2 @@
-# LethalCompanyTemplate
-A template for a BepInEx 5 Plugin, using the correct .csproj configuration for Lethal Company modding
+# LethalPresents
+A mod which gives Presents a 5% chance of spawning a random enemy.
