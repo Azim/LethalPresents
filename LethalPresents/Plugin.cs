@@ -94,7 +94,7 @@ namespace LethalPresents
                 }
             }).ToList();
 
-            int fortune = UnityEngine.Random.Range(1, (OutsideEnemies.Count+Enemies.Count)/2); //keep the mine/turrent % equal to the regular monster pool
+            int fortune = UnityEngine.Random.Range(1, 2+(OutsideEnemies.Count+Enemies.Count)/2); //keep the mine/turrent % equal to the regular monster pool
             if (fortune == 2 && !ShouldSpawnMines) fortune = 1; //shouldnt spawn mines - try turrets instead
             if (fortune == 1 && !ShouldSpawnTurrets) fortune = 2; // shouldnt spawn turrets - try mines instead, if already tried it will just skip next time
             if (fortune == 2 && !ShouldSpawnMines) fortune = 3;

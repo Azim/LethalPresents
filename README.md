@@ -16,6 +16,9 @@ In your BepInEx/config/LethalPresents.cfg the following options are present:
 
 # Releases
 
+### 1.0.3
+* Fixed turrets and mines not spawning when there are no regular enemies available for spawn
+ 
 ### 1.0.2
 * Added config
 * Added mines and turrets spawning
