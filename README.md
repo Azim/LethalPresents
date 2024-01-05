@@ -16,6 +16,10 @@ In your BepInEx/config/LethalPresents.cfg the following options are present:
 
 # Releases
 
+### 1.0.4
+* Moved from Harmony to Monomod
+* Fixed Blacklist/Whitelist not working properly
+
 ### 1.0.3
 * Fixed turrets and mines not spawning when there are no regular enemies available for spawn
  

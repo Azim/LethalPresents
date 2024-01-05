@@ -1,14 +1,16 @@
 ﻿using BepInEx;
-using BepInEx.Configuration;
 using BepInEx.Logging;
+using Discord;
 using GameNetcodeStuff;
 using HarmonyLib;
+using MonoMod.Cil;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
+using System.Reflection;
 using Unity.Netcode;
 using UnityEngine;
+using NetworkManager = Unity.Netcode.NetworkManager;
 
 namespace LethalPresents
 {
@@ -16,10 +18,6 @@ namespace LethalPresents
     public class LethalPresentsPlugin : BaseUnityPlugin
     {
 
-        private readonly Harmony harmony = new Harmony(PluginInfo.PLUGIN_GUID);
-
-        private static bool isHost;
-        private static SelectableLevel currentLevel;
         public static ManualLogSource mls;
 
         private static int spawnChance = 5;
@@ -27,6 +25,17 @@ namespace LethalPresents
         private static bool IsAllowlist = false;
         private static bool ShouldSpawnMines = false;
         private static bool ShouldSpawnTurrets = false;
+        private static bool ShouldSpawnBees = false;
+
+        private static bool isHost => RoundManager.Instance.NetworkManager.IsHost;
+        private static SelectableLevel currentLevel => RoundManager.Instance.currentLevel;
+
+        internal static T GetPrivateField<T>(object instance, string fieldName)
+        {
+            const BindingFlags bindFlags = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo field = instance.GetType().GetField(fieldName, bindFlags);
+            return (T)field.GetValue(instance);
+        }
 
         private void Awake()
         {
@@ -36,7 +45,18 @@ namespace LethalPresents
 
             loadConfig();
 
-            harmony.PatchAll(typeof(LethalPresentsPlugin));
+            On.RoundManager.AdvanceHourAndSpawnNewBatchOfEnemies += updateCurrentLevelInfo;
+            On.GiftBoxItem.OpenGiftBoxServerRpc += spawnRandomEntity;
+        }
+
+        private void updateCurrentLevelInfo(On.RoundManager.orig_AdvanceHourAndSpawnNewBatchOfEnemies orig, RoundManager self)
+        {
+            orig(self);
+
+            mls.LogInfo("List of spawnable enemies (inside):");
+            currentLevel.Enemies.ForEach(e => mls.LogInfo(e.enemyType.name));
+            mls.LogInfo("List of spawnable enemies (outside):");
+            currentLevel.OutsideEnemies.ForEach(e => mls.LogInfo(e.enemyType.name));
         }
 
         private void loadConfig()
@@ -44,26 +64,53 @@ namespace LethalPresents
             spawnChance = Config.Bind<int>("General", "SpawnChance", 5, "Chance of spawning an enemy when opening a present [0-100]").Value;
             disabledEnemies = Config.Bind<string>("General", "EnemyBlocklist", "", "Enemy blocklist separated by , and without whitespaces").Value.Split(",");
             IsAllowlist = Config.Bind<bool>("General", "IsAllowlist", false, "Turns blocklist into allowlist, blocklist must contain at least one inside and one outside enemy, use at your own risk").Value;
-            ShouldSpawnMines = Config.Bind<bool>("General", "ShouldSpawnMines", true, "Add mines to the spawn pool [WIP]").Value;
-            ShouldSpawnTurrets = Config.Bind<bool>("General", "ShouldSpawnTurrets", true, "Add turrets to the spawn pool [WIP]").Value;
+            ShouldSpawnMines = Config.Bind<bool>("General", "ShouldSpawnMines", true, "Add mines to the spawn pool").Value;
+            ShouldSpawnTurrets = Config.Bind<bool>("General", "ShouldSpawnTurrets", true, "Add turrets to the spawn pool").Value;
+            //ShouldSpawnBees = Config.Bind<bool>("General", "ShouldSpawnBees", true, "Add bees to the spawn pool").Value;
+            if (IsAllowlist)
+            {
+                mls.LogInfo("Only following enemies can spawn from the gift:");
+            }
+            else
+            {
+                mls.LogInfo("Following enemies wont be spawned from the gift:");
+            }
+            foreach(string entry in disabledEnemies)
+            {
+                mls.LogInfo(entry);
+            }
         }
 
-        [HarmonyPatch(typeof(RoundManager), "Start")]
-        [HarmonyPrefix]
-        static void setIsHost()
-        {
-            isHost = RoundManager.Instance.NetworkManager.IsHost;
-        }
 
-        [HarmonyPatch(typeof(RoundManager), "AdvanceHourAndSpawnNewBatchOfEnemies")]
-        [HarmonyPrefix]
-        static void updateCurrentLevelInfo(ref EnemyVent[] ___allEnemyVents, ref SelectableLevel ___currentLevel)
+        private void spawnRandomEntity(On.GiftBoxItem.orig_OpenGiftBoxServerRpc orig, GiftBoxItem self)
         {
-            currentLevel = ___currentLevel;
-            mls.LogInfo("List of spawnable enemies (inside):");
-            currentLevel.Enemies.ForEach(e => mls.LogInfo(e.enemyType.name));
-            mls.LogInfo("List of spawnable enemies (outside):");
-            currentLevel.OutsideEnemies.ForEach(e => mls.LogInfo(e.enemyType.name));
+            NetworkManager networkManager = self.NetworkManager;
+            
+            if ((object)networkManager == null || !networkManager.IsListening)
+            {
+                orig(self);
+                return;
+            }
+            int exec_stage = GetPrivateField<int>(self, "__rpc_exec_stage");
+            mls.LogInfo("IsServer:" + networkManager.IsServer + " IsHost:" + networkManager.IsHost + " __rpc_exec_stage:" + exec_stage);
+
+            if (exec_stage != 1 || !isHost)
+            {
+                orig(self);
+                return;
+            }
+            int fortune = UnityEngine.Random.Range(1, 100);
+            mls.LogInfo("Player's fortune:" + fortune);
+
+            if (fortune >= spawnChance)
+            {
+                orig(self);
+                return;
+            }
+            chooseAndSpawnEnemy(self.isInFactory, self.transform.position, self.previousPlayerHeldBy.transform.position);
+
+
+            orig(self);
         }
 
         static void chooseAndSpawnEnemy(bool inside, Vector3 pos, Vector3 player_pos)
@@ -72,7 +119,7 @@ namespace LethalPresents
 
             List<SpawnableEnemyWithRarity> Enemies = currentLevel.Enemies.Where(e =>
             {
-                if (disabledEnemies.Contains(e.enemyType.enemyName)) //if enemy is in the list
+                if (disabledEnemies.Contains(e.enemyType.name)) //if enemy is in the list
                 {
                     return IsAllowlist;     //if its in allowlist, we can spawn that enemy, otherwise, we cant
                 }
@@ -84,7 +131,7 @@ namespace LethalPresents
 
             List<SpawnableEnemyWithRarity> OutsideEnemies = currentLevel.OutsideEnemies.Where(e =>
             {
-                if (disabledEnemies.Contains(e.enemyType.enemyName))
+                if (disabledEnemies.Contains(e.enemyType.name))
                 {
                     return IsAllowlist;
                 }
@@ -94,7 +141,7 @@ namespace LethalPresents
                 }
             }).ToList();
 
-            int fortune = UnityEngine.Random.Range(1, 2+(OutsideEnemies.Count+Enemies.Count)/2); //keep the mine/turrent % equal to the regular monster pool
+            int fortune = UnityEngine.Random.Range(1, 2 + (OutsideEnemies.Count + Enemies.Count) / 2); //keep the mine/turrent % equal to the regular monster pool
             if (fortune == 2 && !ShouldSpawnMines) fortune = 1; //shouldnt spawn mines - try turrets instead
             if (fortune == 1 && !ShouldSpawnTurrets) fortune = 2; // shouldnt spawn turrets - try mines instead, if already tried it will just skip next time
             if (fortune == 2 && !ShouldSpawnMines) fortune = 3;
@@ -159,38 +206,7 @@ namespace LethalPresents
                     SpawnEnemy(enemy, pos, 0);
                     break;
             }
-
-
-
-
         }
-
-
-        [HarmonyPatch(typeof(GiftBoxItem), "OpenGiftBoxServerRpc")]
-        [HarmonyPrefix]
-        static void spawnRandomEntity(GiftBoxItem __instance)
-        {
-            NetworkManager networkManager = __instance.NetworkManager;
-
-            if ((object)networkManager == null || !networkManager.IsListening)
-            {
-                return;
-            }
-            int exec_stage = Traverse.Create(__instance).Field("__rpc_exec_stage").GetValue<int>();
-            mls.LogInfo("IsServer:" + networkManager.IsServer + " IsHost:" + networkManager.IsHost + " __rpc_exec_stage:" + exec_stage);
-
-            if (exec_stage != 1 || !isHost)
-            {
-                return;
-            }
-            int fortune = UnityEngine.Random.Range(1, 100);
-            mls.LogInfo("Player's fortune:" + fortune);
-
-            if (fortune >= spawnChance) return;
-
-            chooseAndSpawnEnemy(__instance.isInFactory, __instance.transform.position, Traverse.Create(__instance).Field("previousPlayerHeldBy").GetValue<PlayerControllerB>().transform.position);
-        }
-
         private static void SpawnEnemy(SpawnableEnemyWithRarity enemy, Vector3 pos, float rot)
         {
             RoundManager.Instance.SpawnEnemyGameObject(pos, rot, -1, enemy.enemyType);
