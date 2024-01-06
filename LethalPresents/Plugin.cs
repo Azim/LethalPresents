@@ -1,16 +1,11 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
-using Discord;
-using GameNetcodeStuff;
-using HarmonyLib;
-using MonoMod.Cil;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Unity.Netcode;
 using UnityEngine;
-using NetworkManager = Unity.Netcode.NetworkManager;
 
 namespace LethalPresents
 {
@@ -26,6 +21,9 @@ namespace LethalPresents
         private static bool ShouldSpawnMines = false;
         private static bool ShouldSpawnTurrets = false;
         private static bool ShouldSpawnBees = false;
+
+        private static bool AllowInsideSpawnOutside = false;
+        private static bool AllowOutsideSpawnInside = false;
 
         private static bool isHost => RoundManager.Instance.NetworkManager.IsHost;
         private static SelectableLevel currentLevel => RoundManager.Instance.currentLevel;
@@ -67,6 +65,10 @@ namespace LethalPresents
             ShouldSpawnMines = Config.Bind<bool>("General", "ShouldSpawnMines", true, "Add mines to the spawn pool").Value;
             ShouldSpawnTurrets = Config.Bind<bool>("General", "ShouldSpawnTurrets", true, "Add turrets to the spawn pool").Value;
             //ShouldSpawnBees = Config.Bind<bool>("General", "ShouldSpawnBees", true, "Add bees to the spawn pool").Value;
+
+            AllowInsideSpawnOutside = Config.Bind<bool>("Extra", "AllowInsideSpawnOutside", true, "Allow spawning inside enemies when outside the building. CAN CAUSE LAG WITHOUT PROPER AI MOD").Value;
+            AllowOutsideSpawnInside = Config.Bind<bool>("Extra", "AllowOutsideSpawnInside", true, "Allow spawning outside enemies when inside the building. CAN CAUSE LAG WITHOUT PROPER AI MOD").Value;
+
             if (IsAllowlist)
             {
                 mls.LogInfo("Only following enemies can spawn from the gift:");
@@ -117,7 +119,7 @@ namespace LethalPresents
         {
             mls.LogInfo("Player pos " + player_pos);
 
-            List<SpawnableEnemyWithRarity> Enemies = currentLevel.Enemies.Where(e =>
+            List<SpawnableEnemyWithRarity> InsideEnemies = currentLevel.Enemies.Where(e =>
             {
                 if (disabledEnemies.Contains(e.enemyType.name)) //if enemy is in the list
                 {
@@ -141,7 +143,8 @@ namespace LethalPresents
                 }
             }).ToList();
 
-            int fortune = UnityEngine.Random.Range(1, 2 + (OutsideEnemies.Count + Enemies.Count) / 2); //keep the mine/turrent % equal to the regular monster pool
+
+            int fortune = UnityEngine.Random.Range(1, 2 + (OutsideEnemies.Count + InsideEnemies.Count) / 2); //keep the mine/turrent % equal to the regular monster pool
             if (fortune == 2 && !ShouldSpawnMines) fortune = 1; //shouldnt spawn mines - try turrets instead
             if (fortune == 1 && !ShouldSpawnTurrets) fortune = 2; // shouldnt spawn turrets - try mines instead, if already tried it will just skip next time
             if (fortune == 2 && !ShouldSpawnMines) fortune = 3;
@@ -180,17 +183,25 @@ namespace LethalPresents
                     SpawnableEnemyWithRarity enemy;
                     if (inside) //inside
                     {
+                        if (AllowOutsideSpawnInside)
+                        {
+                            InsideEnemies.AddRange(OutsideEnemies);
+                        }
 
-                        if (Enemies.Count < 1)
+                        if (InsideEnemies.Count < 1)
                         {
                             mls.LogInfo("Cant spawn enemy - no other enemies present to copy from");
                             return;
                         }
 
-                        enemy = Enemies[UnityEngine.Random.Range(0, Enemies.Count - 1)];
+                        enemy = InsideEnemies[UnityEngine.Random.Range(0, InsideEnemies.Count - 1)];
                     }
                     else  //outside + ship
                     {
+                        if (AllowInsideSpawnOutside)
+                        {
+                            OutsideEnemies.AddRange(InsideEnemies);
+                        }
 
                         if (OutsideEnemies.Count < 1)
                         {
