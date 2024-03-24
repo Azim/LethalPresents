@@ -16,6 +16,9 @@ In your BepInEx/config/LethalPresents.cfg the following options are present:
 
 # Releases
 
+### 1.0.5
+* Bees are now properly spawned alongside other outside enemies
+
 ### 1.0.4
 * Moved from Harmony to Monomod
 * Fixed Blacklist/Whitelist not working properly

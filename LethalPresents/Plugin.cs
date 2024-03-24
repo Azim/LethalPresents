@@ -20,7 +20,6 @@ namespace LethalPresents
         private static bool IsAllowlist = false;
         private static bool ShouldSpawnMines = false;
         private static bool ShouldSpawnTurrets = false;
-        private static bool ShouldSpawnBees = false;
 
         private static bool AllowInsideSpawnOutside = false;
         private static bool AllowOutsideSpawnInside = false;
@@ -38,7 +37,7 @@ namespace LethalPresents
         private void Awake()
         {
             // Plugin startup logic
-            mls = BepInEx.Logging.Logger.CreateLogSource(PluginInfo.PLUGIN_GUID);
+            mls = base.Logger;
             mls.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
 
             loadConfig();
@@ -50,11 +49,15 @@ namespace LethalPresents
         private void updateCurrentLevelInfo(On.RoundManager.orig_AdvanceHourAndSpawnNewBatchOfEnemies orig, RoundManager self)
         {
             orig(self);
-
-            mls.LogInfo("List of spawnable enemies (inside):");
-            currentLevel.Enemies.ForEach(e => mls.LogInfo(e.enemyType.name));
-            mls.LogInfo("List of spawnable enemies (outside):");
-            currentLevel.OutsideEnemies.ForEach(e => mls.LogInfo(e.enemyType.name));
+            foreach(SelectableLevel level in StartOfRound.Instance.levels)
+            {
+                mls.LogInfo($"Moon: {level.PlanetName} ({level.name})");
+                mls.LogInfo("List of spawnable enemies (inside):");
+                level.Enemies.ForEach(e => mls.LogInfo(e.enemyType.name));
+                mls.LogInfo("List of spawnable enemies (outside):");
+                level.OutsideEnemies.ForEach(e => mls.LogInfo(e.enemyType.name));
+                level.DaytimeEnemies.ForEach(e => mls.LogInfo(e.enemyType.name));
+            }
         }
 
         private void loadConfig()
@@ -64,7 +67,6 @@ namespace LethalPresents
             IsAllowlist = Config.Bind<bool>("General", "IsAllowlist", false, "Turns blocklist into allowlist, blocklist must contain at least one inside and one outside enemy, use at your own risk").Value;
             ShouldSpawnMines = Config.Bind<bool>("General", "ShouldSpawnMines", true, "Add mines to the spawn pool").Value;
             ShouldSpawnTurrets = Config.Bind<bool>("General", "ShouldSpawnTurrets", true, "Add turrets to the spawn pool").Value;
-            //ShouldSpawnBees = Config.Bind<bool>("General", "ShouldSpawnBees", true, "Add bees to the spawn pool").Value;
 
             AllowInsideSpawnOutside = Config.Bind<bool>("Extra", "AllowInsideSpawnOutside", true, "Allow spawning inside enemies when outside the building. CAN CAUSE LAG WITHOUT PROPER AI MOD").Value;
             AllowOutsideSpawnInside = Config.Bind<bool>("Extra", "AllowOutsideSpawnInside", true, "Allow spawning outside enemies when inside the building. CAN CAUSE LAG WITHOUT PROPER AI MOD").Value;
@@ -131,7 +133,7 @@ namespace LethalPresents
                 }
             }).ToList();
 
-            List<SpawnableEnemyWithRarity> OutsideEnemies = currentLevel.OutsideEnemies.Where(e =>
+            List<SpawnableEnemyWithRarity> OutsideEnemies = currentLevel.OutsideEnemies.Concat(currentLevel.DaytimeEnemies).Where(e =>
             {
                 if (disabledEnemies.Contains(e.enemyType.name))
                 {
@@ -145,9 +147,8 @@ namespace LethalPresents
 
 
             int fortune = UnityEngine.Random.Range(1, 2 + (OutsideEnemies.Count + InsideEnemies.Count) / 2); //keep the mine/turrent % equal to the regular monster pool
-            if (fortune == 2 && !ShouldSpawnMines) fortune = 1; //shouldnt spawn mines - try turrets instead
-            if (fortune == 1 && !ShouldSpawnTurrets) fortune = 2; // shouldnt spawn turrets - try mines instead, if already tried it will just skip next time
-            if (fortune == 2 && !ShouldSpawnMines) fortune = 3;
+            if (fortune == 1 && !ShouldSpawnTurrets) fortune++;
+            if (fortune == 2 && !ShouldSpawnMines) fortune++;
 
             switch (fortune)
             {
