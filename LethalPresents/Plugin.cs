@@ -58,6 +58,7 @@ namespace LethalPresents
                 level.OutsideEnemies.ForEach(e => mls.LogInfo(e.enemyType.name));
                 level.DaytimeEnemies.ForEach(e => mls.LogInfo(e.enemyType.name));
             }
+            On.RoundManager.AdvanceHourAndSpawnNewBatchOfEnemies -= updateCurrentLevelInfo; //show once and remove
         }
 
         private void loadConfig()

@@ -1,6 +1,6 @@
 {
     "name": "LethalPresents",
-    "version_number": "1.0.5",
+    "version_number": "1.0.6",
     "website_url": "https://github.com/Azim/LethalPresents",
     "description": "A mod which gives Presents a configurable chance of spawning a random enemy when opened.",
     "dependencies": [
