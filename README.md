@@ -16,6 +16,11 @@ In your BepInEx/config/LethalPresents.cfg the following options are present:
 
 # Releases
 
+### 1.0.7
+* Fixed a crash on enemies which do not correctly fill out their properties >:/\
+*such enemies will not be spawnable through the mod*
+* Removed ~~Herobrine~~ AprilCompany 
+
 ### 1.0.6
 * Fixed the debug message spam in console (im sorry alright)
 

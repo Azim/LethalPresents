@@ -46,19 +46,36 @@ namespace LethalPresents
             On.GiftBoxItem.OpenGiftBoxServerRpc += spawnRandomEntity;
         }
 
+        private void TryLog(object obj)
+        {
+            try
+            {
+                mls.LogInfo(obj);
+            }
+            catch (Exception) { }
+        }
+
         private void updateCurrentLevelInfo(On.RoundManager.orig_AdvanceHourAndSpawnNewBatchOfEnemies orig, RoundManager self)
         {
             orig(self);
-            foreach(SelectableLevel level in StartOfRound.Instance.levels)
-            {
-                mls.LogInfo($"Moon: {level.PlanetName} ({level.name})");
-                mls.LogInfo("List of spawnable enemies (inside):");
-                level.Enemies.ForEach(e => mls.LogInfo(e.enemyType.name));
-                mls.LogInfo("List of spawnable enemies (outside):");
-                level.OutsideEnemies.ForEach(e => mls.LogInfo(e.enemyType.name));
-                level.DaytimeEnemies.ForEach(e => mls.LogInfo(e.enemyType.name));
-            }
             On.RoundManager.AdvanceHourAndSpawnNewBatchOfEnemies -= updateCurrentLevelInfo; //show once and remove
+
+            foreach (SelectableLevel level in StartOfRound.Instance.levels)
+            {
+                try
+                {
+                    mls.LogInfo($"Moon: {level.PlanetName} ({level.name})");
+                    mls.LogInfo("List of spawnable enemies (inside):");
+                    level.Enemies.ForEach(e => TryLog(e.enemyType.name));
+                    mls.LogInfo("List of spawnable enemies (outside):");
+                    level.OutsideEnemies.ForEach(e => TryLog(e.enemyType.name));
+                    level.DaytimeEnemies.ForEach(e => TryLog(e.enemyType.name));
+                }
+                catch (Exception)
+                {
+                    continue;
+                }
+            }
         }
 
         private void loadConfig()
