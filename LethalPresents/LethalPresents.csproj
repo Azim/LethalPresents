@@ -30,23 +30,8 @@
     <Reference Include="LethalLib">
       <HintPath>C:\Users\figaR\AppData\Roaming\r2modmanPlus-local\LethalCompany\profiles\MyTest\BepInEx\plugins\Evaisa-LethalLib\LethalLib\LethalLib.dll</HintPath>
     </Reference>
-    <Reference Include="MMHOOK_AmazingAssets.TerrainToMesh">
-      <HintPath>..\MMHOOK\MMHOOK_AmazingAssets.TerrainToMesh.dll</HintPath>
-    </Reference>
     <Reference Include="MMHOOK_Assembly-CSharp">
       <HintPath>..\MMHOOK\MMHOOK_Assembly-CSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="MMHOOK_ClientNetworkTransform">
-      <HintPath>..\MMHOOK\MMHOOK_ClientNetworkTransform.dll</HintPath>
-    </Reference>
-    <Reference Include="MMHOOK_DissonanceVoip">
-      <HintPath>..\MMHOOK\MMHOOK_DissonanceVoip.dll</HintPath>
-    </Reference>
-    <Reference Include="MMHOOK_Facepunch Transport for Netcode for GameObjects">
-      <HintPath>..\MMHOOK\MMHOOK_Facepunch Transport for Netcode for GameObjects.dll</HintPath>
-    </Reference>
-    <Reference Include="MMHOOK_Facepunch.Steamworks.Win64">
-      <HintPath>..\MMHOOK\MMHOOK_Facepunch.Steamworks.Win64.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Collections">
       <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Collections.dll</HintPath>
@@ -72,6 +57,6 @@
   </ItemGroup>
 
     <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-      <Exec Command="copy /Y &quot;$(TargetDir)$(ProjectName).dll&quot; &quot;C:\Users\figaR\AppData\Roaming\r2modmanPlus-local\LethalCompany\profiles\MyTest\BepInEx\plugins\$(ProjectName).dll&quot;&#xD;&#xA;copy /Y &quot;$(TargetDir)$(ProjectName).dll&quot; &quot;$(SolutionDir)\publish\$(ProjectName).dll&quot;&#xD;&#xA;copy /Y &quot;$(SolutionDir)\README.md&quot; &quot;$(SolutionDir)\publish\README.md&quot;" />
+      <Exec Command="copy /Y &quot;$(TargetDir)$(ProjectName).dll&quot; &quot;%25AppData%25\r2modmanPlus-local\LethalCompany\profiles\MyTest\BepInEx\plugins\$(ProjectName).dll&quot;&#xD;&#xA;copy /Y &quot;$(TargetDir)$(ProjectName).dll&quot; &quot;$(SolutionDir)\publish\$(ProjectName).dll&quot;&#xD;&#xA;copy /Y &quot;$(SolutionDir)\README.md&quot; &quot;$(SolutionDir)\publish\README.md&quot;" />
     </Target>
 </Project>
