@@ -16,6 +16,10 @@ In your BepInEx/config/LethalPresents.cfg the following options are present:
 
 # Releases
 
+### 1.0.9
+* Version bump for more better v66
+* Added workaround for mods which incorrectly mess with currentLevel's Enemies, OutsideEnemies and DaytimeEnemies arrays. If you find such mods, please complain to their developers.
+
 ### 1.0.8
 * Version bump for more better v60
 * Trying out AutoHookGenPatcher

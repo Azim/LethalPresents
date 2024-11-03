@@ -4,7 +4,7 @@
         <TargetFramework>netstandard2.1</TargetFramework>
         <AssemblyName>LethalPresents</AssemblyName>
         <Description>LethalPresents mod</Description>
-        <Version>1.0.7</Version>
+        <Version>1.0.9</Version>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
@@ -27,9 +27,11 @@
     <Reference Include="Assembly-CSharp-firstpass">
       <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
     </Reference>
-    <Reference Include="LethalLib">
+    <!--
+      <Reference Include="LethalLib">
       <HintPath>C:\Users\figaR\AppData\Roaming\r2modmanPlus-local\LethalCompany\profiles\MyTest\BepInEx\plugins\Evaisa-LethalLib\LethalLib\LethalLib.dll</HintPath>
     </Reference>
+    -->
     <Reference Include="MMHOOK_Assembly-CSharp">
       <HintPath>..\MMHOOK\MMHOOK_Assembly-CSharp.dll</HintPath>
     </Reference>

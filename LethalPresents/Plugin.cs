@@ -17,6 +17,7 @@ namespace LethalPresents
 
         private static int spawnChance = 5;
         private static string[] disabledEnemies = new string[0];
+        private static bool CloneWorkaround = false;
         private static bool IsAllowlist = false;
         private static bool ShouldSpawnMines = false;
         private static bool ShouldSpawnTurrets = false;
@@ -86,6 +87,7 @@ namespace LethalPresents
             ShouldSpawnMines = Config.Bind<bool>("General", "ShouldSpawnMines", true, "Add mines to the spawn pool").Value;
             ShouldSpawnTurrets = Config.Bind<bool>("General", "ShouldSpawnTurrets", true, "Add turrets to the spawn pool").Value;
 
+            CloneWorkaround = Config.Bind<bool>("Extra", "CloneWorkaround", false, "Workadound against some mods (if you find such mods - please complain to their authors about it) replacing level.Enemies entries with cloned enemies without updating their names.").Value;
             AllowInsideSpawnOutside = Config.Bind<bool>("Extra", "AllowInsideSpawnOutside", true, "Allow spawning inside enemies when outside the building. CAN CAUSE LAG WITHOUT PROPER AI MOD").Value;
             AllowOutsideSpawnInside = Config.Bind<bool>("Extra", "AllowOutsideSpawnInside", true, "Allow spawning outside enemies when inside the building. CAN CAUSE LAG WITHOUT PROPER AI MOD").Value;
 
@@ -114,7 +116,7 @@ namespace LethalPresents
                 return;
             }
             int exec_stage = GetPrivateField<int>(self, "__rpc_exec_stage");
-            mls.LogInfo("IsServer:" + networkManager.IsServer + " IsHost:" + networkManager.IsHost + " __rpc_exec_stage:" + exec_stage);
+            mls.LogDebug("IsServer:" + networkManager.IsServer + " IsHost:" + networkManager.IsHost + " __rpc_exec_stage:" + exec_stage);
 
             if (exec_stage != 1 || !isHost)
             {
@@ -122,7 +124,7 @@ namespace LethalPresents
                 return;
             }
             int fortune = UnityEngine.Random.Range(1, 100);
-            mls.LogInfo("Player's fortune:" + fortune);
+            mls.LogDebug("Player's fortune 1:" + fortune);
 
             if (fortune >= spawnChance)
             {
@@ -137,36 +139,45 @@ namespace LethalPresents
 
         static void chooseAndSpawnEnemy(bool inside, Vector3 pos, Vector3 player_pos)
         {
-            mls.LogInfo("Player pos " + player_pos);
+            mls.LogDebug($"Player pos {player_pos} moon: {currentLevel.PlanetName} ({currentLevel.name}), IsAllowList: {IsAllowlist}");
 
             List<SpawnableEnemyWithRarity> InsideEnemies = currentLevel.Enemies.Where(e =>
             {
-                if (disabledEnemies.Contains(e.enemyType.name)) //if enemy is in the list
+                var name = e.enemyType.name;
+                if (CloneWorkaround) name = name.Replace("(Clone)", "").Trim();
+                if (disabledEnemies.Contains(name)) //if enemy is in the list
                 {
+                    mls.LogDebug($"{name} [{e.enemyType.name}] is in the list");
                     return IsAllowlist;     //if its in allowlist, we can spawn that enemy, otherwise, we cant
                 }
                 else                        //if enemy isnt in the list
                 {
+                    mls.LogDebug($"{name} [{e.enemyType.name}] is NOT in the list");
                     return !IsAllowlist;    //if its not in blacklist, we can spawn it, otherwise, we cant
                 }
             }).ToList();
 
             List<SpawnableEnemyWithRarity> OutsideEnemies = currentLevel.OutsideEnemies.Concat(currentLevel.DaytimeEnemies).Where(e =>
             {
-                if (disabledEnemies.Contains(e.enemyType.name))
+                var name = e.enemyType.name;
+                if (CloneWorkaround) name = name.Replace("(Clone)", "").Trim();
+                if (disabledEnemies.Contains(name))
                 {
+                    mls.LogDebug($"{name} [{e.enemyType.name}] is in the list");
                     return IsAllowlist;
                 }
                 else
                 {
+                    mls.LogDebug($"{name} [{e.enemyType.name}] is NOT in the list");
                     return !IsAllowlist;
                 }
             }).ToList();
 
 
             int fortune = UnityEngine.Random.Range(1, 2 + (OutsideEnemies.Count + InsideEnemies.Count) / 2); //keep the mine/turrent % equal to the regular monster pool
-            if (fortune == 1 && !ShouldSpawnTurrets) fortune++;
-            if (fortune == 2 && !ShouldSpawnMines) fortune++;
+            mls.LogDebug("Choosing what to spawn; fortune 2: " + fortune + "; OutsideEnemiesCount: " + OutsideEnemies.Count + "; InsideEnemiesCount: " + InsideEnemies.Count);
+            if ((fortune == 1) && (!ShouldSpawnTurrets)) fortune++;
+            if ((fortune == 2) && (!ShouldSpawnMines)) fortune++;
 
             switch (fortune)
             {
@@ -180,7 +191,6 @@ namespace LethalPresents
                         turret.transform.forward = (player_pos - pos).normalized;// new Vector3(1, 0, 0);
                         turret.GetComponent<NetworkObject>().Spawn(true);
                         mls.LogInfo("Tried spawning a turret at " + pos);
-                        //objectsTo
                         break;
                     }
                     break;
